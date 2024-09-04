@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Meetup Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        #calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .day {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .selected {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .everyone-free {
+            background-color: #2196F3;
+            color: white;
+        }
+        #members {
+            margin-bottom: 20px;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Group Meetup Planner</h1>
+    <div id="members">
+        <label for="memberName">Add Member:</label>
+        <input type="text" id="memberName" placeholder="Enter name">
+        <button onclick="addMember()">Add</button>
+    </div>
+    <div id="calendar"></div>
+    <button onclick="findCommonDates()">Find Common Dates</button>
+    <div id="results"></div>
+
+    <script>
+        const members = [];
+        const dates = {};
+        const daysInMonth = 30;
+
+        function createCalendar() {
+            const calendar = document.getElementById('calendar');
+            for (let i = 1; i <= daysInMonth; i++) {
+                const day = document.createElement('div');
+                day.className = 'day';
+                day.textContent = i;
+                day.onclick = () => toggleDate(i);
+                calendar.appendChild(day);
+                dates[i] = new Set();
+            }
+        }
+
+        function addMember() {
+            const nameInput = document.getElementById('memberName');
+            const name = nameInput.value.trim();
+            if (name && !members.includes(name)) {
+                members.push(name);
+                nameInput.value = '';
+                updateMemberList();
+            }
+        }
+
+        function updateMemberList() {
+            const memberList = document.createElement('ul');
+            members.forEach(member => {
+                const li = document.createElement('li');
+                li.textContent = member;
+                memberList.appendChild(li);
+            });
+            const membersDiv = document.getElementById('members');
+            if (membersDiv.querySelector('ul')) {
+                membersDiv.replaceChild(memberList, membersDiv.querySelector('ul'));
+            } else {
+                membersDiv.appendChild(memberList);
+            }
+        }
+
+        function toggleDate(day) {
+            if (members.length === 0) {
+                alert('Please add at least one member before selecting dates.');
+                return;
+            }
+            const currentMember = members[members.length - 1];
+            const dayElement = document.querySelectorAll('.day')[day - 1];
+            
+            if (dates[day].has(currentMember)) {
+                dates[day].delete(currentMember);
+                dayElement.classList.remove('selected');
+            } else {
+                dates[day].add(currentMember);
+                dayElement.classList.add('selected');
+            }
+        }
+
+        function findCommonDates() {
+            const commonDates = [];
+            for (let i = 1; i <= daysInMonth; i++) {
+                if (dates[i].size === members.length) {
+                    commonDates.push(i);
+                    document.querySelectorAll('.day')[i - 1].classList.add('everyone-free');
+                } else {
+                    document.querySelectorAll('.day')[i - 1].classList.remove('everyone-free');
+                }
+            }
+
+            const results = document.getElementById('results');
+            if (commonDates.length > 0) {
+                results.textContent = `Everyone is free on: ${commonDates.join(', ')}`;
+            } else {
+                results.textContent = 'No common dates found.';
+            }
+        }
+
+        createCalendar();
+    </script>
+</body>
+</html>
