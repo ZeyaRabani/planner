@@ -3,135 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Group Meetup Planner</title>
+    <title>Meetup Planner</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1 {
-            text-align: center;
-        }
-        #calendar {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-            margin-bottom: 20px;
-        }
-        .day {
-            border: 1px solid #ccc;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-        }
-        .selected {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .everyone-free {
-            background-color: #2196F3;
-            color: white;
-        }
-        #members {
-            margin-bottom: 20px;
-        }
-        #results {
-            margin-top: 20px;
-        }
+        table { border-collapse: collapse; margin-top: 20px; }
+        td, th { border: 1px solid black; padding: 10px; text-align: center; }
+        .available { background-color: green; color: white; }
+        .hidden { display: none; }
+        .past-date { background-color: #f0f0f0; color: #999; }
     </style>
 </head>
 <body>
-    <h1>Group Meetup Planner</h1>
-    <div id="members">
-        <label for="memberName">Add Member:</label>
-        <input type="text" id="memberName" placeholder="Enter name">
-        <button onclick="addMember()">Add</button>
+    <h1>Meetup Planner</h1>
+    <div id="userForm">
+        <input type="text" id="nameInput" placeholder="Enter your name">
+        <button onclick="addUser()">Add User</button>
     </div>
-    <div id="calendar"></div>
-    <button onclick="findCommonDates()">Find Common Dates</button>
-    <div id="results"></div>
+    <div id="calendarView" class="hidden">
+        <h2 id="monthYear"></h2>
+        <table id="calendarTable"></table>
+        <button onclick="submitAvailability()">Submit Availability</button>
+    </div>
+    <div id="resultsView" class="hidden">
+        <h2>Group Availability</h2>
+        <table id="resultsTable"></table>
+    </div>
 
     <script>
-        const members = [];
-        const dates = {};
-        const daysInMonth = 30;
+        let currentUser = null;
+        let users = [];
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const today = new Date();
+
+        function addUser() {
+            const name = document.getElementById('nameInput').value;
+            if (name) {
+                console.log("Sending request to save user:", name);
+                fetch('/.netlify/functions/saveUser', {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("User saved:", data);
+                    currentUser = data;
+                    showCalendarView();
+                })
+                .catch(error => {
+                    console.error("Error saving user:", error);
+                    alert("Error saving user. Please check the console for details.");
+                });
+            } else {
+                alert("Please enter a name");
+            }
+        }
+
+        function showCalendarView() {
+            document.getElementById('userForm').classList.add('hidden');
+            document.getElementById('calendarView').classList.remove('hidden');
+            createCalendar();
+        }
 
         function createCalendar() {
-            const calendar = document.getElementById('calendar');
-            for (let i = 1; i <= daysInMonth; i++) {
-                const day = document.createElement('div');
-                day.className = 'day';
-                day.textContent = i;
-                day.onclick = () => toggleDate(i);
-                calendar.appendChild(day);
-                dates[i] = new Set();
-            }
-        }
-
-        function addMember() {
-            const nameInput = document.getElementById('memberName');
-            const name = nameInput.value.trim();
-            if (name && !members.includes(name)) {
-                members.push(name);
-                nameInput.value = '';
-                updateMemberList();
-            }
-        }
-
-        function updateMemberList() {
-            const memberList = document.createElement('ul');
-            members.forEach(member => {
-                const li = document.createElement('li');
-                li.textContent = member;
-                memberList.appendChild(li);
-            });
-            const membersDiv = document.getElementById('members');
-            if (membersDiv.querySelector('ul')) {
-                membersDiv.replaceChild(memberList, membersDiv.querySelector('ul'));
-            } else {
-                membersDiv.appendChild(memberList);
-            }
-        }
-
-        function toggleDate(day) {
-            if (members.length === 0) {
-                alert('Please add at least one member before selecting dates.');
-                return;
-            }
-            const currentMember = members[members.length - 1];
-            const dayElement = document.querySelectorAll('.day')[day - 1];
+            const table = document.getElementById('calendarTable');
+            table.innerHTML = '';
             
-            if (dates[day].has(currentMember)) {
-                dates[day].delete(currentMember);
-                dayElement.classList.remove('selected');
-            } else {
-                dates[day].add(currentMember);
-                dayElement.classList.add('selected');
-            }
-        }
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            document.getElementById('monthYear').textContent = `${months[month]} ${year}`;
 
-        function findCommonDates() {
-            const commonDates = [];
-            for (let i = 1; i <= daysInMonth; i++) {
-                if (dates[i].size === members.length) {
-                    commonDates.push(i);
-                    document.querySelectorAll('.day')[i - 1].classList.add('everyone-free');
-                } else {
-                    document.querySelectorAll('.day')[i - 1].classList.remove('everyone-free');
+            const headerRow = table.insertRow();
+            days.forEach(day => {
+                headerRow.insertCell().textContent = day;
+            });
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            let date = 1;
+            for (let i = 0; i < 6; i++) {
+                const row = table.insertRow();
+                for (let j = 0; j < 7; j++) {
+                    if (i === 0 && j < firstDay.getDay()) {
+                        row.insertCell();
+                    } else if (date > lastDay.getDate()) {
+                        break;
+                    } else {
+                        const cell = row.insertCell();
+                        cell.textContent = date;
+                        const cellDate = new Date(year, month, date);
+                        if (cellDate < today) {
+                            cell.classList.add('past-date');
+                        } else {
+                            cell.onclick = () => {
+                                cell.classList.toggle('available');
+                            };
+                        }
+                        date++;
+                    }
                 }
             }
-
-            const results = document.getElementById('results');
-            if (commonDates.length > 0) {
-                results.textContent = `Everyone is free on: ${commonDates.join(', ')}`;
-            } else {
-                results.textContent = 'No common dates found.';
-            }
         }
 
-        createCalendar();
+        function submitAvailability() {
+            const availableDates = [];
+            const cells = document.querySelectorAll('#calendarTable td.available');
+            cells.forEach(cell => {
+                availableDates.push(parseInt(cell.textContent));
+            });
+
+            currentUser.availability = availableDates;
+            users.push(currentUser);
+
+            // Here you would typically send this data to your server
+            console.log("Saving availability:", currentUser);
+
+            showResultsView();
+        }
+
+        function showResultsView() {
+            document.getElementById('calendarView').classList.add('hidden');
+            document.getElementById('resultsView').classList.remove('hidden');
+            updateResultsTable();
+        }
+
+        function updateResultsTable() {
+            const table = document.getElementById('resultsTable');
+            table.innerHTML = '';
+            
+            const headerRow = table.insertRow();
+            headerRow.insertCell().textContent = 'User';
+            for (let i = 1; i <= 31; i++) {
+                headerRow.insertCell().textContent = i;
+            }
+
+            users.forEach(user => {
+                const row = table.insertRow();
+                row.insertCell().textContent = user.name;
+                for (let i = 1; i <= 31; i++) {
+                    const cell = row.insertCell();
+                    if (user.availability.includes(i)) {
+                        cell.classList.add('available');
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>
