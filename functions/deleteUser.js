@@ -17,24 +17,18 @@ async function writeUsers(users) {
 }
 
 exports.handler = async (event) => {
-  console.log("Function called");
-  const { name, availability } = JSON.parse(event.body);
-  console.log("Data received:", { name, availability });
+  console.log("Delete User function called");
+  const { id } = JSON.parse(event.body);
+  console.log("User ID to delete:", id);
   
   try {
-    const users = await readUsers();
-    let user = users.find(u => u.name === name);
-    if (user) {
-      user.availability = availability;
-    } else {
-      user = { id: Date.now().toString(), name, availability };
-      users.push(user);
-    }
+    let users = await readUsers();
+    users = users.filter(user => user.id !== id);
     await writeUsers(users);
-    console.log("User saved:", user);
+    console.log("User deleted");
     return {
       statusCode: 200,
-      body: JSON.stringify(user)
+      body: JSON.stringify({ message: "User deleted successfully" })
     };
   } catch (error) {
     console.error("Error:", error);

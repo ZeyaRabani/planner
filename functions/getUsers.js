@@ -12,29 +12,14 @@ async function readUsers() {
   }
 }
 
-async function writeUsers(users) {
-  await fs.writeFile(dataFile, JSON.stringify(users, null, 2));
-}
-
 exports.handler = async (event) => {
-  console.log("Function called");
-  const { name, availability } = JSON.parse(event.body);
-  console.log("Data received:", { name, availability });
+  console.log("Get Users function called");
   
   try {
     const users = await readUsers();
-    let user = users.find(u => u.name === name);
-    if (user) {
-      user.availability = availability;
-    } else {
-      user = { id: Date.now().toString(), name, availability };
-      users.push(user);
-    }
-    await writeUsers(users);
-    console.log("User saved:", user);
     return {
       statusCode: 200,
-      body: JSON.stringify(user)
+      body: JSON.stringify(users)
     };
   } catch (error) {
     console.error("Error:", error);
