@@ -8,6 +8,7 @@ async function readUsers() {
     const data = await fs.readFile(dataFile, 'utf8');
     return JSON.parse(data);
   } catch (error) {
+    console.error("Error reading users file:", error);
     return [];
   }
 }
@@ -17,30 +18,45 @@ async function writeUsers(users) {
 }
 
 exports.handler = async (event) => {
-  console.log("Function called");
-  const { name, availability } = JSON.parse(event.body);
-  console.log("Data received:", { name, availability });
+  console.log("Save User function called");
+  console.log("Event body:", event.body);
   
   try {
-    const users = await readUsers();
-    let user = users.find(u => u.name === name);
-    if (user) {
-      user.availability = availability;
-    } else {
-      user = { id: Date.now().toString(), name, availability };
-      users.push(user);
+    let newUser;
+    try {
+      newUser = JSON.parse(event.body);
+    } catch (parseError) {
+      console.error("Error parsing JSON:", parseError);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid JSON input", details: parseError.message })
+      };
     }
+
+    console.log("Parsed user data:", newUser);
+
+    if (!newUser || !newUser.name || !Array.isArray(newUser.availability)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid user data structure" })
+      };
+    }
+
+    let users = await readUsers();
+    newUser.id = Date.now().toString();
+    users.push(newUser);
     await writeUsers(users);
-    console.log("User saved:", user);
+    
+    console.log("User saved successfully");
     return {
       statusCode: 200,
-      body: JSON.stringify(user)
+      body: JSON.stringify({ message: "User saved successfully", userId: newUser.id })
     };
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error in saveUser function:", error);
     return {
-      statusCode: 400,
-      body: JSON.stringify({ error: error.message })
+      statusCode: 500,
+      body: JSON.stringify({ error: "Internal server error", details: error.message })
     };
   }
 };

@@ -101,29 +101,37 @@
         }
 
         function submitAvailability() {
-            const availableDates = [];
-            const cells = document.querySelectorAll('#calendarTable td.available');
-            cells.forEach(cell => {
-                availableDates.push(parseInt(cell.textContent));
-            });
+    const availableDates = [];
+    const cells = document.querySelectorAll('#calendarTable td.available');
+    cells.forEach(cell => {
+        availableDates.push(parseInt(cell.textContent));
+    });
 
-            currentUser.availability = availableDates;
+    currentUser.availability = availableDates;
 
-            console.log("Saving availability:", currentUser);
-            fetch('/.netlify/functions/saveUser', {
-                method: 'POST',
-                body: JSON.stringify(currentUser)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log("Availability saved:", data);
-                showResultsView();
-            })
-            .catch(error => {
-                console.error("Error saving availability:", error);
-                alert("Error saving availability. Please check the console for details.");
-            });
+    console.log("Saving availability:", JSON.stringify(currentUser));
+    fetch('/.netlify/functions/saveUser', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(currentUser)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Availability saved:", data);
+        showResultsView();
+    })
+    .catch(error => {
+        console.error("Error saving availability:", error);
+        alert(`Error saving availability: ${error.message}. Please check the console for details.`);
+    });
+}
 
         function showResultsView() {
             document.getElementById('calendarView').classList.add('hidden');
